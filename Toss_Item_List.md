@@ -1,8 +1,6 @@
 https://github.com/Flexget/Flexget  
 https://www.flexget.com/InstallWizard/Docker
 
-https://github.com/joweisberg/docker-htpc
-
 https://github.com/toddrob99/searcharr
 
 https://github.com/Waterboy1602/Addarr
