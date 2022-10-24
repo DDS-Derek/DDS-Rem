@@ -22,3 +22,5 @@ qBittorrent
 
 LinuxDir2HTML
 
+Hlink
+
