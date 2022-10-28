@@ -20,3 +20,5 @@ https://github.com/appotry/PTtool
 https://github.com/LuckyPuppy514/jproxy
 
 https://hub.docker.com/r/linuxserver/deluge
+
+https://hub.docker.com/r/nevinee/qbittorrent
