@@ -15,8 +15,6 @@ https://hub.docker.com/r/superng6/subfinder
 
 https://hub.docker.com/r/bloodstar/v2fly-privoxy
 
-https://github.com/appotry/PTtool
-
 https://github.com/LuckyPuppy514/jproxy
 
 https://hub.docker.com/r/linuxserver/deluge
