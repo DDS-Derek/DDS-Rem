@@ -177,14 +177,14 @@ package_installation
 clear
 echo -e "${Green}use os: ${OSNAME}${Font}"
 # 输出主菜单
-echo -e "———————————————————————————————————————"
+echo -e "——————————————————————————————————————————————————————————————————————————————————————————"
 echo -e "${Green}Linux qBittorrent Web UI 一键安装脚本${Font}"
 echo -e "${Green}1、WDaan/VueTorrent ${WDaan_VueTorrent_url}${Font}"
 echo -e "${Green}2、CzBiX/qb-web ${CzBiX_qb_web_url}${Font}"
 echo -e "${Green}3、bill-ahmed/qbit-matUI ${bill_ahmed_qbit_matUI_url}${Font}"
 echo -e "${Green}4、ntoporcov/iQbit ${ntoporcov_iQbit_url}${Font}"
 echo -e "${Green}5、退出脚本${Font}"
-echo -e "———————————————————————————————————————"
+echo -e "——————————————————————————————————————————————————————————————————————————————————————————"
 read -p "请输入数字 [1-5]:" num
 case "$num" in
     1)
