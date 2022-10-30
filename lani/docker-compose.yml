@@ -1,0 +1,74 @@
+version: '3.7'
+
+# 文档地址：https://std4453.github.io/lani/
+# Github仓库：https://github.com/std4453/lani
+
+services:
+
+    lani-db:
+        container_name: lani-db
+        image: postgres:13-alpine
+        environment:
+          POSTGRES_DB: lani
+          POSTGRES_PASSWORD: password
+          POSTGRES_USER: lani
+        restart: always
+        volumes:
+          - ./db_data:/var/lib/postgresql/data
+        networks:
+          - default
+
+    jellyfin:
+        container_name: jellyfin
+        image: jellyfin/jellyfin
+        user: 1000:1000
+        network_mode: 'host'
+        volumes:
+          - ./jellyfin/config:/config
+          - ./jellyfin/cache:/cache
+          - /media:/media
+        restart: 'always'
+        # Optional - alternative address used for autodiscovery
+        #environment:
+        #  - JELLYFIN_PublishedServerUrl=http://example.com
+
+    qbittorrent:
+        container_name: qbittorrent
+        image: ddsderek/qbittorrent
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+          - UMASK_SET=022
+          - WEBUIPORT=8090
+          - TL=https://githubraw.sleele.workers.dev/XIU2/TrackersListCollection/master/best.txt
+          - UT=true
+          - QB_EE_BIN=false
+        volumes:
+          - ./qbittorrent/config:/config
+          - /media/downloads:/downloads
+        ports:
+          - 6881:6881
+          - 6881:6881/udp
+          - 8090:8090
+        restart: always
+        networks:
+          - default
+
+    lani:
+        container_name: lani_all_in_one
+        image: ghcr.io/std4453/lani-all-in-one
+        ports:
+            - '8080:8080'
+            - '9001:9001'
+        restart: always
+        volumes:
+            - './lani/config.yaml:/config/config.yaml'
+            - './lani/storage:/storage'
+            - '/media:/files'
+        networks:
+          - default
+
+networks:
+  default:
+    name: lani
