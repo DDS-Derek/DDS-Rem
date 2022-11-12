@@ -24,3 +24,5 @@ https://hub.docker.com/r/nevinee/qbittorrent
 https://github.com/JasonHHouse/gaps
 
 https://github.com/angrycuban13/Just-A-Bunch-Of-Starr-Scripts
+
+https://github.com/Cloudbox/autoscan
