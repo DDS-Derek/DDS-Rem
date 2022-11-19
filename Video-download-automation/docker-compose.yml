@@ -1,0 +1,1135 @@
+version: "3.3"
+services:
+
+# --------------------------------------------------------------------------------------------------------------------------------------
+#  __     ___     _                  _                     _                 _               _                        _   _             
+#  \ \   / (_) __| | ___  ___     __| | _____      ___ __ | | ___   __ _  __| |   __ _ _   _| |_ ___  _ __ ___   __ _| |_(_) ___  _ __  
+#   \ \ / /| |/ _` |/ _ \/ _ \   / _` |/ _ \ \ /\ / / '_ \| |/ _ \ / _` |/ _` |  / _` | | | | __/ _ \| '_ ` _ \ / _` | __| |/ _ \| '_ \ 
+#    \ V / | | (_| |  __/ (_) | | (_| | (_) \ V  V /| | | | | (_) | (_| | (_| | | (_| | |_| | || (_) | | | | | | (_| | |_| | (_) | | | |
+#     \_/  |_|\__,_|\___|\___/   \__,_|\___/ \_/\_/ |_| |_|_|\___/ \__,_|\__,_|  \__,_|\__,_|\__\___/|_| |_| |_|\__,_|\__|_|\___/|_| |_|
+#
+#
+# Copyright (c) 2021-2022 DDSRem DDSDerek <https://blog.ddsrem.com>
+#
+# This is free software, licensed under the GNU General Public License v3.0.
+# See https://raw.githubusercontent.com/DDS-Derek/Video-download-automation/main/LICENSE for more information.
+#
+# --------------------------------------------------------------------------------------------------------------------------------------
+
+
+#    jackett:
+#        image: linuxserver/jackett:latest
+#        container_name: jackett
+#        environment:
+#          - PUID=1000
+#          - PGID=1000
+#          - TZ=Asia/Shanghai
+#          - AUTO_UPDATE=true
+#        volumes:
+#          - /home/暂存/docker/film/jackett/config:/config
+#          - /home/video2/NEW/downloads:/downloads
+#        ports:
+#          - 9117:9117
+#        restart: unless-stopped
+#        networks:
+#          - film-bridge
+
+    prowlarr:  # 索引器
+        image: linuxserver/prowlarr:develop
+        container_name: prowlarr
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+        volumes:
+          - /home/暂存/docker/film/prowlarr/config:/config
+        ports:
+          - 9696:9696
+        restart: unless-stopped
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-prowlarr
+
+    rsshub: # rsshub，获取豆瓣订阅
+        image: diygod/rsshub
+        container_name: rsshub-film
+        restart: always
+        ports:
+            - '1200:1200'
+        environment:
+            NODE_ENV: production
+            CACHE_TYPE: redis
+            REDIS_URL: 'redis://redis:6379/'
+            PUPPETEER_WS_ENDPOINT: 'ws://browserless:3000'
+        networks:
+          - film-bridge
+        depends_on:
+            - redis
+            - browserless
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-rsshub-film
+    browserless:
+        image: browserless/chrome
+        container_name: rsshub-film-chrome
+        restart: always
+        ulimits:
+          core:
+            hard: 0
+            soft: 0
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-rsshub-film-chrome
+    redis:
+        image: redis:6-alpine
+        container_name: rsshub-film-redis
+        restart: always
+        volumes:
+            - ./rsshub/redis/data:/data
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-rsshub-film-redis
+
+#    xarr-rss:
+#        container_name: xarr-rss
+#        extra_hosts:
+#            - 'api.themoviedb.org:108.156.91.21'
+#        environment:
+#            - TZ=Asia/Shanghai
+#        ports:
+#            - '8086:8086'
+#        volumes:
+#            - './xarr-rss/config:/app/conf'
+#        restart: unless-stopped
+#        image: 'xiaoyi510/xarr-rss:latest'
+#        networks:
+#          - film-bridge
+
+    radarr:  # 电影订阅工具
+        image: linuxserver/radarr:latest
+        container_name: radarr
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+        volumes:
+          - /home/暂存/docker/film/radarr/config:/config
+          - /home/video2/NEW:/film
+        ports:
+          - 7878:7878
+        restart: unless-stopped
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-radarr
+
+    sonarr:  # 剧集订阅工具
+        image: linuxserver/sonarr:latest
+        container_name: sonarr
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+        volumes:
+          - /home/暂存/docker/film/sonarr/config:/config
+          - /home/video2/NEW:/film
+        ports:
+          - 8989:8989
+        restart: unless-stopped
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-sonarr
+
+    bgmi:  # 动漫搜索下载器，作为sonarr的补充
+        image: ddsderek/bgmi-docker-all-in-one:latest
+        container_name: "bgmi"
+        restart: "always"
+        volumes:
+          - /home/暂存/docker/film/bgmi:/bgmi
+          - /home/video2/NEW:/media
+        networks:
+          - film-bridge
+        environment:
+          - TZ=Asia/Shanghai
+          - PGID=1000
+          - PUID=1000
+          - BGMI_DOWNLOADER=transmission
+          - BGMI_SOURCE=mikan_project
+          - BGMI_ADMIN_TOKEN=password
+          - DOWNLOAD_DIR=/media/downloads/cartoon
+        networks:
+          film-macvlan:
+            ipv4_address: 192.168.31.90
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-bgmi
+
+    overseerr:  # 请求管理和媒体发现工具
+        image: linuxserver/overseerr:latest
+        container_name: overseerr
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+        volumes:
+          - /home/暂存/docker/film/overseerr/config:/config
+        ports:
+          - 5055:5055
+        restart: unless-stopped
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-overseerr
+
+#    jellyseerr:
+#        image: fallenbagel/jellyseerr:latest
+#        container_name: jellyseerr
+#        environment:
+#          - LOG_LEVEL=debug
+#          - TZ=Asia/Shanghai
+#        ports:
+#          - 5055:5055
+#        volumes:
+#          - /home/暂存/docker/film/jellyseerr/config:/app/config
+#        restart: unless-stopped
+#        networks:
+#          - film-bridge
+
+#    ombi:
+#        image: linuxserver/ombi
+#        container_name: ombi
+#        environment:
+#          - PUID=1000
+#          - PGID=1000
+#          - TZ=Asia/Shanghai
+#          - BASE_URL=/ombi
+#        volumes:
+#          - ./ombi/config:/config
+#        ports:
+#          - 3579:3579
+#        restart: always
+#        networks:
+#          - film-bridge
+
+    nas-tools:
+        image: jxxghp/nas-tools:latest
+        ports:
+          - 3113:3000
+        volumes:
+          - /home/暂存/docker/film/nas-tools/config:/config
+          - /home/video2/NEW:/media
+        environment: 
+          - PUID=1000
+          - PGID=1000
+          - UMASK=022
+          - NASTOOL_AUTO_UPDATE=true
+#          - REPO_URL=https://ghproxy.com/https://github.com/jxxghp/nas-tools.git  # 当你访问github网络很差时，可以考虑解释本行注释
+        restart: always
+        network_mode: bridge
+        hostname: nas-tools
+        container_name: nas-tools
+
+    plex:  # 播放器
+        container_name: plex
+        ports:
+            - '32400:32400/tcp'
+            - '3005:3005/tcp'
+            - '8324:8324/tcp'
+            - '32469:32469/tcp'
+            - '1900:1900/udp'
+            - '32410:32410/udp'
+            - '32412:32412/udp'
+            - '32413:32413/udp'
+            - '32414:32414/udp'
+        environment:
+            - TZ=Asia/Shanghai
+            - 'ADVERTISE_IP=http://192.168.31.96:32400/'
+        volumes:
+            - '/home/暂存/docker/film/plex/config:/config'
+            - '/home/暂存/docker/film/plex/tmp:/transcode'
+            - '/home/video2/NEW:/data'
+        devices:
+            - '/dev/dri:/dev/dri'
+        image: plexinc/pms-docker
+        networks:
+          film-macvlan:
+            ipv4_address: 192.168.31.96
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-plex
+
+#    jellyfin:
+#        image: jellyfin/jellyfin
+#        container_name: jellyfin
+#        user: 1000:1000
+#        volumes:
+#          - /home/暂存/docker/film/jellyfin/config:/config
+#          - /home/暂存/docker/film/jellyfin/cache:/cache
+#          - /home/video2/NEW:/media
+#        restart: "unless-stopped"
+#        environment:
+#          - JELLYFIN_PublishedServerUrl=http://example.com
+#        networks:
+#          film-macvlan:
+#            ipv4_address: 192.168.31.96
+
+    qbittorrentee-radarr:  #电影下载器
+        image: ddsderek/qbittorrent:4.3.9.10
+        container_name: qbittorrentee-radarr
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+          - UMASK=022
+        volumes:
+          - /home/暂存/docker/film/qbittorrentee-radarr/config:/config
+          - /home/video2/NEW:/film
+        ports:
+          - 6881:6881
+          - 6881:6881/udp
+          - 8080:8080
+        restart: unless-stopped
+        networks:
+          film-macvlan:
+            ipv4_address: 192.168.31.94
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-qbittorrentee-radarr
+
+    qbittorrentee-sonarr:  # 剧集下载器
+        image: ddsderek/qbittorrent:4.3.9.10
+        container_name: qbittorrentee-sonarr
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+          - UMASK=022
+        volumes:
+          - /home/暂存/docker/film/qbittorrentee-sonarr/config:/config
+          - /home/video2/NEW:/film
+        ports:
+          - 6881:6881
+          - 6881:6881/udp
+          - 8080:8080
+        restart: unless-stopped
+        networks:
+          film-macvlan:
+            ipv4_address: 192.168.31.93
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-qbittorrentee-sonarr
+
+#    Aria2-radarr:  #电影下载器2
+#        container_name: aria2-radarr
+#        image: ddsderek/aria2-pro
+#        environment:
+#          - PUID=1000
+#          - PGID=1000
+#          - UMASK_SET=022
+#          - RPC_SECRET=password
+#          - RPC_PORT=6800
+#          - LISTEN_PORT=6888
+#          - DISK_CACHE=64M
+#          - IPV6_MODE=false
+#          - UPDATE_TRACKERS=true
+#          - CUSTOM_TRACKER_URL=
+#          - TZ=Asia/Shanghai
+#          - DOWNLOAD_DIR=/film
+#        volumes:
+#          - /home/暂存/docker/film/aria2-radarr/config:/config
+#          - /home/video2/NEW:/film
+#        networks:
+#          film-macvlan:
+#            ipv4_address: 192.168.31.88
+#        restart: unless-stopped
+#        logging:
+#          driver: json-file
+#          options:
+#            max-size: 1m
+#          driver: "syslog"
+#          options:
+#            syslog-address: "tcp://192.168.31.99:514"
+#            tag: docker-aria2-radarr
+
+#    Aria2-sonarr:  # 剧集下载器2
+#        container_name: aria2-sonarr
+#        image: ddsderek/aria2-pro
+#        environment:
+#          - PUID=1000
+#          - PGID=1000
+#          - UMASK_SET=022
+#          - RPC_SECRET=password
+#          - RPC_PORT=6800
+#          - LISTEN_PORT=6888
+#          - DISK_CACHE=64M
+#          - IPV6_MODE=false
+#          - UPDATE_TRACKERS=true
+#          - CUSTOM_TRACKER_URL=
+#          - TZ=Asia/Shanghai
+#          - DOWNLOAD_DIR=/film
+#        volumes:
+#          - /home/暂存/docker/film/aria2-sonarr/config:/config
+#          - /home/video2/NEW:/film
+#        networks:
+#          film-macvlan:
+#            ipv4_address: 192.168.31.91
+#        restart: unless-stopped
+#        logging:
+#          driver: json-file
+#          options:
+#            max-size: 1m
+#          driver: "syslog"
+#          options:
+#            syslog-address: "tcp://192.168.31.99:514"
+#            tag: docker-aria2-sonarr
+
+#    AriaNg:  # aria2下载器管理
+#        container_name: ariang
+#        image: p3terx/ariang
+#        command: --port 6880 --ipv6
+#        network_mode: host
+#        restart: unless-stopped
+#        logging:
+#          driver: json-file
+#          options:
+#            max-size: 1m
+#          driver: "syslog"
+#          options:
+#            syslog-address: "tcp://192.168.31.99:514"
+#            tag: docker-ariang
+
+    geoip-updater:
+        container_name: geoip-updater
+        image: crazymax/geoip-updater:latest
+        volumes:
+          - "./rtorrent_rutorrent/data/geoip:/data"
+        environment:
+          - TZ=Asia/Shanghai
+          - EDITION_IDS=GeoLite2-ASN,GeoLite2-City,GeoLite2-Country
+          - LICENSE_KEY=RSCDksXfyESs5fyo
+          - DOWNLOAD_PATH=/data
+          - SCHEDULE=0 0 * * 0
+          - LOG_LEVEL=info
+          - LOG_JSON=false
+        restart: always
+        networks:
+          - film-bridge
+    rtorrent-rutorrent:
+        container_name: rtorrent-rutorrent
+        image: crazymax/rtorrent-rutorrent:latest
+        expose:
+          - "6881/udp"
+          - "8000"
+          - "8080"
+          - "9000"
+          - "50000"
+        ports:
+          - target: 6881
+            published: 6881
+            protocol: udp
+          - target: 8080
+            published: 8080
+            protocol: tcp
+          - target: 9000
+            published: 9000
+            protocol: tcp
+          - target: 50000
+            published: 50000
+            protocol: tcp
+        environment:
+          - TZ=Asia/Shanghai
+          - PUID=1000
+          - PGID=1000
+          - WAN_IP_CMD=false
+          - AUTH_DELAY=0s
+          - MEMORY_LIMIT=256M
+          - UPLOAD_MAX_SIZE=16M
+          - OPCACHE_MEM_SIZE=128
+          - MAX_FILE_UPLOADS=50
+          - REAL_IP_FROM=0.0.0.0/32
+          - REAL_IP_HEADER=X-Forwarded-For
+          - LOG_IP_VAR=remote_addr
+          - LOG_ACCESS=true
+          - XMLRPC_AUTHBASIC_STRING=rTorrent XMLRPC restricted access
+          - RUTORRENT_AUTHBASIC_STRING=ruTorrent restricted access
+          - WEBDAV_AUTHBASIC_STRING=WebDAV restricted access
+          - RT_LOG_LEVEL=info
+          - RT_LOG_EXECUTE=false
+          - RT_LOG_XMLRPC=false
+          - RU_REMOVE_CORE_PLUGINS=erasedata,httprpc
+          - RU_HTTP_USER_AGENT=Mozilla/5.0 (Windows NT 6.0; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0
+          - RU_HTTP_TIME_OUT=30
+          - RU_HTTP_USE_GZIP=true
+          - RU_RPC_TIME_OUT=5
+          - RU_LOG_RPC_CALLS=false
+          - RU_LOG_RPC_FAULTS=true
+          - RU_PHP_USE_GZIP=false
+          - RU_PHP_GZIP_LEVEL=2
+          - RU_SCHEDULE_RAND=10
+          - RU_LOG_FILE=/data/rutorrent/rutorrent.log
+          - RU_DO_DIAGNOSTIC=true
+          - RU_SAVE_UPLOADED_TORRENTS=true
+          - RU_OVERWRITE_UPLOADED_TORRENTS=false
+          - RU_FORBID_USER_SETTINGS=false
+          - RU_LOCALE=UTF8
+        volumes:
+          - "./rtorrent_rutorrent/data:/data"
+          - "/home/下载:/downloads"
+          - "/home/video2:/downloads2"
+          - "./rtorrent_rutorrent/passwd:/passwd"
+        ulimits:
+          nproc: 65535
+          nofile:
+            soft: 32000
+            hard: 40000
+        restart: always
+        networks:
+          film-macvlan:
+            ipv4_address: 192.168.31.87
+    rtorrent-logs:
+        container_name: rtorrent-logs
+        image: bash
+        command: bash -c 'tail -f /log/*.log'
+        depends_on:
+          - rtorrent-rutorrent
+        volumes:
+          - "./rtorrent_rutorrent/data/rtorrent/log:/log"
+        restart: always
+        networks:
+          - film-bridge
+
+    nas-tools-transmission:
+        image: linuxserver/transmission:latest
+        container_name: nas-tools-transmission
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+          - TRANSMISSION_WEB_HOME=/transmission-web-control/
+          - USER=admin
+          - PASS=admin
+#          - WHITELIST=iplist
+#          - PEERPORT=peerport
+#          - HOST_WHITELIST=dnsname list
+        volumes:
+          - /home/暂存/docker/film/nas-tools-transmission/config:/config
+          - /home/暂存/docker/film/nas-tools-transmission/watch:/watch
+          - /home/video2/NEW/downloads:/downloads
+        ports:
+          - 9091:9091
+          - 52413:52413
+          - 52413:52413/udp
+        restart: unless-stopped
+        networks:
+          film-macvlan:
+            ipv4_address: 192.168.31.89
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-nas-tools-transmission
+
+    PT-transmission:
+        image: chisbread/transmission
+        container_name: PT-transmission
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+          - USER=admin
+          - PASS=admin
+#          - WHITELIST=iplist
+#          - RPCPORT=rpcport
+#          - PEERPORT=peerport
+#          - HOST_WHITELIST=dnsnane list
+        volumes:
+          - /home/暂存/docker/film/PT-transmission/config:/config
+          - /home/下载/:/downloads
+          - /home/下载/torrent:/watch
+        ports:
+          - 9091:9091
+          - 53413:51413
+          - 53413:51413/udp
+        restart: unless-stopped
+        networks:
+          film-macvlan:
+            ipv4_address: 192.168.31.92
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-PT-transmission
+
+#    PT-qbittorrent:
+#        image: ddsderek/qbittorrent:4.3.9_4.3.9.10
+#        container_name: PT-qbittorrent
+#        environment:
+#          - PUID=1000
+#          - PGID=1000
+#          - TZ=Asia/Shanghai
+#          - UMASK=022
+#          - TL=https://githubraw.sleele.workers.dev/XIU2/TrackersListCollection/master/best.txt
+#          - UT=true
+#          - QB_EE_BIN=false
+#        volumes:
+#          - /home/暂存/docker/film/PT_qbittorrent/config:/config
+#          - /home/video2/NEW:/downloads
+#        ports:
+#          - 49678:49678
+#          - 49678:49678/udp
+#          - 8080:8080
+#        restart: unless-stopped
+#        networks:
+#          film-macvlan:
+#            ipv4_address: 192.168.31.91
+#        logging:
+#          driver: "syslog"
+#          options:
+#            syslog-address: "tcp://192.168.31.99:514"
+#            tag: docker-PT-qbittorrent
+
+#    nzbget:
+#        image: johnrosen/nzbget:latest
+#        container_name: nzbget
+#        environment:
+#          - PUID=1000
+#          - PGID=1000
+#          - TZ=Asia/Shanghai
+#          - DOCKER_MODS=ghcr.io/gilbn/theme.park:nzbget
+#        volumes:
+#          - /home/暂存/docker/film/nzbget/config:/config
+#          - /home/video2/NEW/downloads:/downloads
+#        devices:
+#          - /dev/dri:/dev/dri
+#        ports:
+#          - 6789:6789
+#        restart: unless-stopped
+#        networks:
+#          - film-bridge
+#        logging:
+#          driver: "syslog"
+#          options:
+#            syslog-address: "tcp://192.168.31.99:514"
+#            tag: docker-nzbget
+
+#    sabnzbd:
+#        image: linuxserver/sabnzbd:latest
+#        container_name: sabnzbd
+#        environment:
+#          - PUID=1000
+#          - PGID=1000
+#          - TZ=Asia/Shanghai
+#        volumes:
+#          - /home/暂存/docker/film/sabnzbd/config:/config
+#          - /home/video2/NEW/downloads:/downloads
+#        ports:
+#          - 4654:8080
+#        networks:
+#          - film-bridge
+#        restart: unless-stopped
+#        logging:
+#          driver: "syslog"
+#          options:
+#            syslog-address: "tcp://192.168.31.99:514"
+#            tag: docker-sabnzbd
+
+    xunlei:
+        image: cnk3x/xunlei:latest
+        privileged: true
+        container_name: xunlei
+        hostname: mynas
+        network_mode: host
+        environment:
+          - XL_WEB_PORT=4321
+        volumes:
+          - ./xunlei/data:/xunlei/data
+          - /home/video2/NEW/downloads/xunlei:/xunlei/downloads
+        restart: unless-stopped
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-xunlei
+
+#    iyuuplus:
+#        volumes:
+#            - './IYUU/config:/IYUU/db'
+#            - './PT_qbittorrent/config/qBittorrent/data/BT_backup:/BT_backup'
+#            - './PT-transmission/config/torrents/:/torrents'
+#        ports:
+#            - '8787:8787'
+#        container_name: IYUUPlus
+#        restart: always
+#        image: iyuucn/iyuuplus
+#        logging:
+#          driver: "syslog"
+#          options:
+#            syslog-address: "tcp://192.168.31.99:514"
+#            tag: docker-iyuuplus
+#        networks:
+#          - film-bridge
+
+#    vertex:
+#        container_name: vertex
+#        volumes:
+#            - './vertex:/vertex'
+#        ports:
+#            - '3773:3000'
+#        environment:
+#            - TZ=Asia/Shanghai
+#        restart: unless-stopped
+#        image: 'lswl/vertex:stable'
+#        logging:
+#          driver: "syslog"
+#          options:
+#            syslog-address: "tcp://192.168.31.99:514"
+#            tag: docker-vertex
+#        networks:
+#          - film-bridge
+
+#    pt_helper:
+#        restart: always
+#        container_name: pt_helper
+#        ports:
+#            - '8192:8192'
+#        volumes:
+#            - './pt_helper/data:/data'
+#        image: 'crazyq/pt_helper:latest'
+#        logging:
+#          driver: "syslog"
+#          options:
+#            syslog-address: "tcp://192.168.31.99:514"
+#            tag: docker-pt_helper
+#        networks:
+#          - film-bridge
+
+    pthelper:
+        image: xingsu1021/pthelper:latest
+        container_name: pthelper
+        restart: always
+        environment:
+          - DEBUG=True
+        volumes:
+          - ./pthelper/logs:/logs
+          - ./pthelper/backup:/backups
+          - ./pthelper/db:/db
+        ports:
+          - "3883:80"
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-pthelper
+
+#    unpackerr:
+#        image: golift/unpackerr
+#        container_name: unpackerr
+#        volumes:
+#          - /home/video2/NEW/downloads:/downloads
+#        restart: always
+#        user: 1000:1000
+#        environment:
+#          - TZ=Asia/Shanghai
+#          # General config
+#          - UN_DEBUG=false
+#          - UN_LOG_FILE=
+#          - UN_LOG_FILES=10
+#          - UN_LOG_FILE_MB=10
+#          - UN_INTERVAL=2m
+#          - UN_START_DELAY=3m
+#          - UN_RETRY_DELAY=5m
+#          - UN_MAX_RETRIES=3
+#          - UN_PARALLEL=1
+#          - UN_FILE_MODE=0644
+#          - UN_DIR_MODE=0755
+#          # Sonarr Usenet Config
+#          - UN_SONARR_0_URL=http://sonarr:8989
+#          - UN_SONARR_0_API_KEY=66550e4ff0ce4b589723ff58539d517f
+#          - UN_SONARR_0_PATHS_0=/film/downloads/tv
+#          - UN_SONARR_0_PROTOCOLS=usenet
+#          - UN_SONARR_0_TIMEOUT=10s
+#          - UN_SONARR_0_DELETE_ORIG=true
+#          - UN_SONARR_0_DELETE_DELAY=10m
+#          # Sonarr torrent Config
+#          - UN_SONARR_1_URL=http://sonarr:8989
+#          - UN_SONARR_1_API_KEY=66550e4ff0ce4b589723ff58539d517f
+#          - UN_SONARR_1_PATHS_0=/film/downloads/tv
+#          - UN_SONARR_1_PROTOCOLS=torrent
+#          - UN_SONARR_1_TIMEOUT=10s
+#          - UN_SONARR_1_DELETE_ORIG=true
+#          - UN_SONARR_1_DELETE_DELAY=10m
+#          # Radarr Usenet Config
+#          - UN_RADARR_0_URL=http://radarr:7878
+#          - UN_RADARR_0_API_KEY=d87503ff838141dcbb15c02255531050
+#          - UN_RADARR_0_PATHS_0=/film/downloads/movies
+#          - UN_RADARR_0_PROTOCOLS=usenet
+#          - UN_RADARR_0_TIMEOUT=10s
+#          - UN_RADARR_0_DELETE_ORIG=true
+#          - UN_RADARR_0_DELETE_DELAY=10m
+#          # Radarr torrent Config
+#          - UN_RADARR_1_URL=http://radarr:7878
+#          - UN_RADARR_1_API_KEY=d87503ff838141dcbb15c02255531050
+#          - UN_RADARR_1_PATHS_0=/film/downloads/movies
+#          - UN_RADARR_1_PROTOCOLS=torrent
+#          - UN_RADARR_1_TIMEOUT=10s
+#          - UN_RADARR_1_DELETE_ORIG=true
+#          - UN_RADARR_1_DELETE_DELAY=10m
+#        security_opt:
+#          - no-new-privileges:true
+#        networks:
+#          - film-bridge
+#        logging:
+#          driver: "syslog"
+#          options:
+#            syslog-address: "tcp://192.168.31.99:514"
+#            tag: docker-unpackerr
+
+    chinesesubfinder:  # 字幕下载器
+        image: allanpk716/chinesesubfinder:latest
+        volumes:
+          - /home/暂存/docker/film/chinesesubfinder/config:/config
+          - /home/暂存/docker/film/chinesesubfinder/browser:/root/.cache/rod/browser 
+          - /home/video2/NEW:/media
+          - /home/video2/NEW/movies:/media/movies
+          - /home/video2/NEW/tv:/media/tv
+          - /home/video2/NEW/cartoon:/media/cartoon
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - PERMS=true
+          - TZ=Asia/Shanghai
+          - UMASK=022
+        restart: always
+        network_mode: bridge
+        hostname: chinesesubfinder
+        container_name: chinesesubfinder
+        ports:
+          - 19035:19035
+          - 19037:19037
+        logging:
+            driver: "json-file"
+            options:
+              max-size: "10m"
+            driver: "syslog"
+            options:
+              syslog-address: "tcp://192.168.31.99:514"
+              tag: docker-chinesesubfinder
+
+    bazarr:
+        image: linuxserver/bazarr:latest
+        container_name: bazarr
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+        volumes:
+          - /home/暂存/docker/film/bazarr/config:/config
+          - /home/video2/NEW/movies:/movies
+          - /home/video2/NEW/tv:/tv
+        ports:
+          - 6767:6767
+        restart: unless-stopped
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-bazarr
+
+#    tinymediamanager:
+#        container_name: tinymediamanager
+#        volumes:
+#            - './tinymediamanager/config:/config'
+#            - '/home/video2/NEW:/media'
+#        environment:
+#            - GROUP_ID=1000
+#            - USER_ID=1000
+#            - SUP_GROUP_IDS=1000(nas),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),120(lpadmin),131(lxd),132(sambashare)
+#            - UMASK=022
+#            - TZ=Asia/Shanghai
+#            - KEEP_APP_RUNNING=0
+#            - CLEAN_TMP_DIR=1
+#            - DISPLAY_WIDTH=1280
+#            - DISPLAY_HEIGHT=768
+#            - SECURE_CONNECTION=0
+#            - VNC_PASSWORD=
+#            - X11VNC_EXTRA_OPTS=
+#            - ENABLE_CJK_FONT=0
+#        ports:
+#            - '5818:5800'
+#            - '5900:5900'
+#        networks:
+#          - film-bridge
+#        image: 'dzhuang/tinymediamanager:latest'
+
+    asp:
+        container_name: film-asp
+        restart: always
+        environment:
+            - TZ=Asia/Shanghai
+            - PGID=1000
+            - PUID=1000
+            - PT_QIANDAO=false
+            - IYUU_API=IYUU13547Tb87e4d6ef8a5bee3afce47f24ed954af0bd25e80
+            - SET_PM=true
+            - CFVR=755
+            - SMTP=false
+            - SMTP_FROM_EMAIL=ddsrem@sohu.com
+            - SMTP_MAILER_USER=ddsrem@sohu.com
+            - SMTP_MAILER_HOST=smtp.sohu.com:25
+            - SMTP_TO_EMAIL=ddsrem@163.com
+            - SMTP_MAILER_PASSWORD=KNP8OGJ91RBXHDV
+            - SMTP_TLS=yes
+            - TGBOT=true
+            - TGBOT_SEND_TOKEN=5245702009:AAHZcD46KklKJiXDNm_ZNvCyomW8dnAZgq8
+            - TGBOT_SEND_CHATID=1904337272
+            - SERVERCHAN=false
+            - SERVERCHAN_KEY=SCT170727T3ry3oMZ87uRZcqXBSuCaE6it
+        volumes:
+            - '/home/video2/NEW:/00-asp'
+            - '/home/暂存/docker/film/asp:/config'
+        image: 'ddsderek/asp:latest'
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-film-asp
+
+    flaresolverr:
+        container_name: flaresolverr
+        ports:
+            - '8191:8191'
+        environment:
+            - LOG_LEVEL=info
+            - TZ=Asia/Shanghai
+            - TEST_URL=https://www.bing.com
+        restart: unless-stopped
+        network_mode: bridge
+        image: 'ghcr.io/flaresolverr/flaresolverr:latest'
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-flaresolverr
+
+#    clash-film:  # 代理
+#        image: dreamacro/clash-premium
+#        container_name: clash-film
+#        restart: unless-stopped
+#        network_mode: host
+#        volumes:
+#          - /home/暂存/docker/film/clash:/root/.config/clash
+
+
+# --------------------------------------------------------------------------------------------------------------------------------------
+
+
+#    jellyfin-vue:
+#        container_name: jellyfin-vue
+#        ports:
+#            - '8559:80'
+#        restart: always
+#        image: 'jellyfin/jellyfin-vue:unstable'
+#        networks:
+#          - film-bridge
+
+    nas-tools-telegram-helper:
+        image: nibbin/nas-tools-telegram-helper:latest
+        environment:
+          - TELEGRAM_BOT_TOKEN=5316009401:AAGkpYOaRID2UWkC5KDlUIzd97vihzFmzOw
+          - NASTOOL_WEBHOOK_URL=http://192.168.31.99:3113/telegram
+          - PROXY=
+          - PROXY_USERNAME=
+          - PROXY_PASSWORD=
+        restart: always
+        network_mode: host
+        container_name: nas-tools-telegram-helper
+
+    tautulli:
+        image: tautulli/tautulli
+        container_name: tautulli
+        restart: unless-stopped
+        volumes:
+          - /home/暂存/docker/film/tautulli/config:/config
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - TZ=Asia/Shanghai
+        ports:
+          - 9191:8181
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-tautulli
+
+#    embychinesenamesynchronous:
+#        container_name: EmbyChineseNameSynchronous
+#        volumes:
+#            - '/home/暂存/docker/film/EmbyChineseNameSynchronous/config:/opt/config'
+#        environment:
+#            - TZ=Asia/Shanghai
+#            - PUID=1000
+#            - PGID=1000
+#            - UMASK=022
+#        network_mode: host
+#        image: 'ddsderek/embychinesenamesynchronous:latest'
+
+    hlink:
+        container_name: film-hlink
+        image: ddsderek/hlink:latest
+        restart: unless-stopped
+        ports:
+            - 9090:9090
+        volumes:
+            - /home/暂存/docker/film/hlink/config:/config
+            - /home/video2/NEW:/data
+        environment:
+            - PUID=1000
+            - PGID=1000
+            - UMASK=022
+        networks:
+            - film-bridge
+
+    watchtower-film:  # 镜像更新
+        image: containrrr/watchtower
+        container_name: watchtower-film
+        restart: unless-stopped  
+        environment:
+          - TZ=Asia/Shanghai
+          - WATCHTOWER_NOTIFICATIONS=email
+          - WATCHTOWER_NOTIFICATION_EMAIL_FROM=ddsrem@sohu.com  # 邮件发送地址
+          - WATCHTOWER_NOTIFICATION_EMAIL_TO=ddsrem@163.com  # 邮件接收地址
+          - WATCHTOWER_NOTIFICATION_EMAIL_SERVER=smtp.sohu.com  # 设置 SMTP 服务器
+          - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT=25  # 设置 SMTP 的端口，默认为 25
+          - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER=ddsrem@sohu.com  # SMTP 的用户名
+          - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD=KNP8OGJ91RBXHDV  # SMTP 的密码
+          - WATCHTOWER_NOTIFICATION_EMAIL_DELAY=1  # 发送通知之前的延迟（秒）        
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+        networks:
+          - film-bridge
+        command: --cleanup prowlarr chinesesubfinder --schedule "0 0 0 * * *" #--interval 7200
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-watchtower
+
+    autoheal:
+        container_name: autoheal-film
+        restart: always
+        environment:
+            - AUTOHEAL_CONTAINER_LABEL=all
+        volumes:
+            - '/var/run/docker.sock:/var/run/docker.sock'
+        image: willfarrell/autoheal
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-autoheal-film
+
+    filebrowser:
+        image: hurlenko/filebrowser
+        container_name: filebrowser-film
+        user: "1000:1000"
+        ports:
+          - 6876:8080
+        volumes:
+          - /home/video2/NEW:/data/Video
+          - /home/下载:/data/PT_downloads
+          - /home/暂存/docker/film/filebrowser/config:/config
+        environment:
+          - FB_BASEURL=/filebrowser
+        restart: always
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-filebrowser-film
+
+    linuxdir2html:
+        container_name: linuxdir2html
+        volumes:
+            - '/home/备份/linuxdir2html:/out'
+            - '/home/video2/NEW:/Scan'
+        ports:
+            - '4774:4774'
+        environment:
+            - TZ=Asia/Shanghai
+            - PUID=1000
+            - PGID=1000
+            - UMASK=022
+            - 'CRON=0 0 * * *'
+        networks:
+          - film-bridge
+        logging:
+          driver: "syslog"
+          options:
+            syslog-address: "tcp://192.168.31.99:514"
+            tag: docker-linuxdir2html-film
+        image: 'ddsderek/linuxdir2html:latest'
+
+
+# --------------------------------------------------------------------------------------------------------------------------------------
+
+
+networks:  # 网络设置
+  film-macvlan:
+    name: film-macvlan
+    enable_ipv6: true
+    driver: macvlan
+    driver_opts:
+      parent: enp3s0
+    ipam:
+      config:
+        - subnet: "192.168.31.1/24"
+          gateway: "192.168.31.2"
+        - subnet: 240e:390:a30:3a10::1/60
+  film-bridge:
+    name: film-bridge
+
