@@ -16,7 +16,7 @@ transmission
 
 ASP
 
-EmbyChineseNameSynchronous
+MediaServerTools
 
 qBittorrent
 
@@ -26,3 +26,4 @@ Hlink
 
 nginxWebUI
 
+BangumiBot
