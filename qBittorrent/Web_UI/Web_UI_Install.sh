@@ -186,28 +186,22 @@ echo -e "${Green}4、ntoporcov/iQbit ${ntoporcov_iQbit_url}${Font}"
 echo -e "${Green}5、退出脚本${Font}"
 echo -e "——————————————————————————————————————————————————————————————————————————————————————————"
 read -p "请输入数字 [1-5]:" num
+# 获取所有数据
+get_all_ma
 case "$num" in
     1)
-    # 获取所有数据
-    get_all_ma
     # 安装
     WDaan_VueTorrent_install
     ;;
     2)
-    # 获取所有数据
-    get_all_ma
     # 安装
     CzBiX_qb_web_install
     ;;
     3)
-    # 获取所有数据
-    get_all_ma
     # 安装
     bill_ahmed_qbit_matUI_install
     ;;
     4)
-    # 获取所有数据
-    get_all_ma
     # 安装
     ntoporcov_iQbit_install
     ;;
