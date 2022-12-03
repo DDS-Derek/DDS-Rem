@@ -28,3 +28,5 @@ https://github.com/angrycuban13/Just-A-Bunch-Of-Starr-Scripts
 https://github.com/Cloudbox/autoscan
 
 https://github.com/StuffAnThings/qbit_manage/wiki/Docker-Installation
+
+https://github.com/Notifiarr/notifiarr
